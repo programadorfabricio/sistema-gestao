@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energy Cycle — Sistema de Gestão</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --verde: #9EFD38; --verde-escuro: #6bc420; --cinza: #2a2a2a;
+    --cinza-medio: #3d3d3d; --cinza-claro: #555; --cinza-texto: #aaa;
+    --branco: #f5f5f5; --fundo: #1a1a1a; --card: #242424;
+    --border: #333; --vermelho: #ff4d4d; --amarelo: #f5c542;
+  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--fundo); color: var(--branco); margin: 0; }
+  .sidebar { width: 240px; min-height: 100vh; background: var(--cinza); display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 100; }
+  .logo { padding: 24px 20px; border-bottom: 1px solid var(--border); }
+  .logo-nome { font-size: 18px; font-weight: 800; color: var(--verde); letter-spacing: 1px; }
+  .logo-sub { font-size: 11px; color: var(--cinza-texto); margin-top: 2px; }
+  .nav { flex: 1; padding: 16px 0; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; cursor: pointer; color: var(--cinza-texto); font-size: 14px; font-weight: 500; transition: all 0.15s; border-left: 3px solid transparent; }
+  .nav-item:hover { background: var(--cinza-medio); color: var(--branco); }
+  .nav-item.ativo { background: var(--cinza-medio); color: var(--verde); border-left-color: var(--verde); }
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--cinza-texto); }
+  .sidebar-footer strong { color: var(--branco); display: block; margin-bottom: 2px; }
+  .main { margin-left: 240px; padding: 28px 32px; min-height: 100vh; }
+  .page { display: none; }
+  .page.ativa { display: block; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+  .page-title { font-size: 22px; font-weight: 700; }
+  .page-subtitle { font-size: 13px; color: var(--cinza-texto); margin-top: 3px; }
+  .btn { padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; }
+  .btn-verde { background: var(--verde); color: #111; }
+  .btn-verde:hover { background: var(--verde-escuro); }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--branco); }
+  .btn-outline:hover { border-color: var(--verde); color: var(--verde); }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .stat-label { font-size: 12px; color: var(--cinza-texto); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-valor { font-size: 28px; font-weight: 800; color: var(--branco); }
+  .stat-detalhe { font-size: 12px; color: var(--cinza-texto); margin-top: 6px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .card-title { font-size: 14px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 12px 20px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--cinza-texto); border-bottom: 1px solid var(--border); }
+  td { padding: 13px 20px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(158,253,56,0.03); }
+  .empty-row td { text-align: center; color: var(--cinza-texto); padding: 32px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-verde { background: rgba(158,253,56,0.15); color: var(--verde); }
+  .badge-vermelho { background: rgba(255,77,77,0.15); color: var(--vermelho); }
+  .badge-amarelo { background: rgba(245,197,66,0.15); color: var(--amarelo); }
+  .badge-cinza { background: rgba(255,255,255,0.1); color: var(--cinza-texto); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--verde); color: #111; font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; vertical-align: middle; flex-shrink: 0; }
+  .acao-btn { background: transparent; border: 1px solid var(--border); color: var(--cinza-texto); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.15s; margin-right: 4px; }
+  .acao-btn:hover { border-color: var(--verde); color: var(--verde); }
+  .acao-btn.danger:hover { border-color: var(--vermelho); color: var(--vermelho); }
+  .busca { display: flex; gap: 10px; margin-bottom: 20px; }
+  .input { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; color: var(--branco); font-size: 13px; outline: none; transition: border-color 0.15s; }
+  .input:focus { border-color: var(--verde); }
+  .input-busca { flex: 1; }
+  select.input option { background: var(--cinza); }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .progresso-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .progresso-fill { height: 100%; background: var(--verde); border-radius: 3px; }
+  .prof-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .prof-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+  .prof-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--verde); color: #111; font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .prof-nome { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .prof-cargo { font-size: 12px; color: var(--cinza-texto); margin-bottom: 12px; }
+  .prof-stats { display: flex; justify-content: space-around; padding-top: 12px; border-top: 1px solid var(--border); }
+  .prof-stat-label { font-size: 11px; color: var(--cinza-texto); }
+  .prof-stat-val { font-size: 14px; font-weight: 700; color: var(--verde); }
+  .prof-acoes { margin-top: 14px; display: flex; gap: 8px; justify-content: center; }
+  .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 0 20px 20px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .bar { width: 100%; background: rgba(158,253,56,0.2); border-radius: 4px 4px 0 0; transition: background 0.2s; cursor: pointer; }
+  .bar:hover { background: var(--verde); }
+  .bar-label { font-size: 11px; color: var(--cinza-texto); }
+  .notif { display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+  .notif:last-child { border-bottom: none; }
+  .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--verde); margin-top: 4px; flex-shrink: 0; }
+  .notif-dot.amarelo { background: var(--amarelo); }
+  .notif-dot.vermelho { background: var(--vermelho); }
+  .notif-texto { font-size: 13px; }
+  .notif-tempo { font-size: 11px; color: var(--cinza-texto); margin-top: 2px; }
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.aberto { display: flex; }
+  .modal { background: var(--cinza); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal-titulo { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; color: var(--cinza-texto); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-input { width: 100%; background: var(--fundo); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--branco); font-size: 14px; outline: none; }
+  .form-input:focus { border-color: var(--verde); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--verde); color: #111; padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; z-index: 999; transform: translateY(80px); opacity: 0; transition: all 0.3s; }
+  .toast.visivel { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-nome">⚡ ENERGY CYCLE</div>
+    <div class="logo-sub">Sistema de Gestão</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item ativo" onclick="mostrar('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
+    <div class="nav-item" onclick="mostrar('alunos',this)"><span class="nav-icon">👥</span> Alunos</div>
+    <div class="nav-item" onclick="mostrar('financeiro',this)"><span class="nav-icon">💰</span> Financeiro</div>
+    <div class="nav-item" onclick="mostrar('professores',this)"><span class="nav-icon">🏋️</span> Professores</div>
+    <div class="nav-item" onclick="mostrar('agenda',this)"><span class="nav-icon">📅</span> Agenda</div>
+  </nav>
+  <div class="sidebar-footer"><strong>Mari Silva</strong>Administradora</div>
+</aside>
+
+<main class="main">
+
+  <div class="page ativa" id="page-dashboard">
+    <div class="page-header">
+      <div><div class="page-title" id="dash-saudacao">Bom dia, Mari 👋</div><div class="page-subtitle" id="dash-data"></div></div>
+      <button class="btn btn-verde" onclick="abrirModal('modal-aluno')">+ Novo Aluno</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Alunos Ativos</div><div class="stat-valor" id="dash-ativos">0</div><div class="stat-detalhe">total cadastrado</div></div>
+      <div class="stat-card"><div class="stat-label">Receita do Mês</div><div class="stat-valor" id="dash-receita">R$ 0</div><div class="progresso-bar"><div class="progresso-fill" id="dash-barra" style="width:0%"></div></div><div class="stat-detalhe" id="dash-meta-pct">0% da meta</div></div>
+      <div class="stat-card"><div class="stat-label">Vencimentos Hoje</div><div class="stat-valor" id="dash-vencendo">0</div><div class="stat-detalhe" id="dash-atraso-txt">em atraso</div></div>
+      <div class="stat-card"><div class="stat-label">Professores Ativos</div><div class="stat-valor" id="dash-profs">0</div><div class="stat-detalhe">cadastrados</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card"><div class="card-header"><div class="card-title">Avisos importantes</div></div><div id="dash-avisos"></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">Últimos alunos</div><button class="btn btn-outline" onclick="mostrar('alunos',document.querySelectorAll('.nav-item')[1])">Ver todos</button></div><table><thead><tr><th>Aluno</th><th>Plano</th><th>Status</th></tr></thead><tbody id="dash-ultimos"></tbody></table></div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">Receita — Últimos 6 meses</div></div><div class="chart-bars" id="dash-chart"></div></div>
+  </div>
+
+  <div class="page" id="page-alunos">
+    <div class="page-header">
+      <div><div class="page-title">Alunos</div><div class="page-subtitle" id="alunos-sub">0 alunos cadastrados</div></div>
+      <button class="btn btn-verde" onclick="abrirModal('modal-aluno')">+ Novo Aluno</button>
+    </div>
+    <div class="busca">
+      <input class="input input-busca" id="busca-aluno" placeholder="🔍  Buscar por nome ou CPF..." oninput="renderAlunos()">
+      <select class="input" id="filtro-plano" onchange="renderAlunos()"><option value="">Todos os planos</option><option>Mensal</option><option>Trimestral</option><option>Semestral</option><option>Anual</option></select>
+      <select class="input" id="filtro-status" onchange="renderAlunos()"><option value="">Todos os status</option><option>Em dia</option><option>Vence hoje</option><option>Em atraso</option></select>
+    </div>
+    <div class="card"><table><thead><tr><th>Aluno</th><th>Plano</th><th>Mensalidade</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr></thead><tbody id="tabela-alunos"></tbody></table></div>
+  </div>
+
+  <div class="page" id="page-financeiro">
+    <div class="page-header">
+      <div><div class="page-title">Financeiro</div><div class="page-subtitle" id="fin-mes"></div></div>
+      <button class="btn btn-verde" onclick="abrirModal('modal-pagamento')">+ Registrar Pagamento</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Receita do Mês</div><div class="stat-valor" id="fin-receita">R$ 0</div><div class="progresso-bar"><div class="progresso-fill" id="fin-barra" style="width:0%"></div></div><div class="stat-detalhe" id="fin-meta-pct">0% da meta</div></div>
+      <div class="stat-card"><div class="stat-label">A Receber</div><div class="stat-valor" id="fin-areceber" style="color:var(--amarelo)">R$ 0</div><div class="stat-detalhe" id="fin-pendentes">0 pendentes</div></div>
+      <div class="stat-card"><div class="stat-label">Em Atraso</div><div class="stat-valor" id="fin-atraso" style="color:var(--vermelho)">R$ 0</div><div class="stat-detalhe" id="fin-inadimplentes">0 inadimplentes</div></div>
+      <div class="stat-card"><div class="stat-label">Ticket Médio</div><div class="stat-valor" id="fin-ticket">R$ 0</div><div class="stat-detalhe">por aluno/mês</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card"><div class="card-header"><div class="card-title">Pagamentos recebidos</div></div><table><thead><tr><th>Aluno</th><th>Valor</th><th>Data</th></tr></thead><tbody id="fin-recebidos"></tbody></table></div>
+      <div class="card"><div class="card-header"><div class="card-title">Em atraso / vencendo</div></div><table><thead><tr><th>Aluno</th><th>Valor</th><th>Vencimento</th><th></th></tr></thead><tbody id="fin-atraso-lista"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-professores">
+    <div class="page-header">
+      <div><div class="page-title">Professores</div><div class="page-subtitle" id="prof-sub">0 professores</div></div>
+      <button class="btn btn-verde" onclick="abrirModal('modal-professor')">+ Novo Professor</button>
+    </div>
+    <div class="prof-grid" id="grid-professores"></div>
+  </div>
+
+  <div class="page" id="page-agenda">
+    <div class="page-header">
+      <div><div class="page-title">Agenda de Aulas</div><div class="page-subtitle" id="agenda-sub">Gerencie os horários do studio</div></div>
+      <button class="btn btn-verde" onclick="abrirModal('modal-aula')">+ Nova Aula</button>
+    </div>
+    <div class="busca">
+      <select class="input" id="filtro-dia" onchange="renderAgenda()"><option value="">Todos os dias</option><option>Segunda</option><option>Terça</option><option>Quarta</option><option>Quinta</option><option>Sexta</option><option>Sábado</option><option>Domingo</option></select>
+    </div>
+    <div id="grid-agenda"></div>
+  </div>
+
+</main>
+
+<!-- MODAL ALUNO -->
+<div class="modal-overlay" id="modal-aluno">
+  <div class="modal">
+    <div class="modal-titulo" id="modal-aluno-titulo">Novo Aluno</div>
+    <input type="hidden" id="aluno-edit-id">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="aluno-nome" placeholder="Ex: João Silva"></div>
+      <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="aluno-telefone" placeholder="(19) 99999-9999" inputmode="numeric"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">CPF</label><input class="form-input" id="aluno-cpf" placeholder="000.000.000-00" inputmode="numeric"></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="aluno-email" placeholder="email@exemplo.com"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Plano *</label><select class="form-input" id="aluno-plano"><option>Mensal</option><option>Trimestral</option><option>Semestral</option><option>Anual</option></select></div>
+      <div class="form-group"><label class="form-label">Mensalidade (R$) *</label><input class="form-input" id="aluno-valor" type="number" placeholder="180"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Início *</label><input class="form-input" id="aluno-inicio" type="date"></div>
+      <div class="form-group"><label class="form-label">Vencimento *</label><input class="form-input" id="aluno-vencimento" type="date"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fecharModal('modal-aluno')">Cancelar</button>
+      <button class="btn btn-verde" onclick="salvarAluno()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROFESSOR -->
+<div class="modal-overlay" id="modal-professor">
+  <div class="modal">
+    <div class="modal-titulo" id="modal-prof-titulo">Novo Professor</div>
+    <input type="hidden" id="prof-edit-id">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="prof-nome" placeholder="Ex: Lucas Andrade"></div>
+      <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="prof-telefone" placeholder="(19) 99999-9999" inputmode="numeric"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Cargo *</label><input class="form-input" id="prof-cargo" placeholder="Ex: Instrutor Sênior"></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="prof-status"><option>Ativo</option><option>Férias</option><option>Inativo</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Aulas/semana</label><input class="form-input" id="prof-aulas" type="number" placeholder="8"></div>
+      <div class="form-group"><label class="form-label">Avaliação (1-5)</label><input class="form-input" id="prof-aval" type="number" min="1" max="5" step="0.1" placeholder="4.8"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fecharModal('modal-professor')">Cancelar</button>
+      <button class="btn btn-verde" onclick="salvarProfessor()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PAGAMENTO -->
+<div class="modal-overlay" id="modal-pagamento">
+  <div class="modal">
+    <div class="modal-titulo">Registrar Pagamento</div>
+    <div class="form-group"><label class="form-label">Aluno *</label><select class="form-input" id="pag-aluno-id"></select></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="pag-valor" type="number" placeholder="180"></div>
+      <div class="form-group"><label class="form-label">Data *</label><input class="form-input" id="pag-data" type="date"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Novo vencimento *</label><input class="form-input" id="pag-venc" type="date"></div>
+    <div class="form-group"><label class="form-label">Observação</label><input class="form-input" id="pag-obs" placeholder="Ex: Pago via Pix"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fecharModal('modal-pagamento')">Cancelar</button>
+      <button class="btn btn-verde" onclick="salvarPagamento()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AULA -->
+<div class="modal-overlay" id="modal-aula">
+  <div class="modal">
+    <div class="modal-titulo" id="modal-aula-titulo">Nova Aula</div>
+    <input type="hidden" id="aula-edit-id">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nome da aula *</label><input class="form-input" id="aula-nome" placeholder="Ex: Spinning Avançado"></div>
+      <div class="form-group"><label class="form-label">Dia *</label><select class="form-input" id="aula-dia"><option>Segunda</option><option>Terça</option><option>Quarta</option><option>Quinta</option><option>Sexta</option><option>Sábado</option><option>Domingo</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Início *</label><input class="form-input" id="aula-inicio" type="time" value="06:00"></div>
+      <div class="form-group"><label class="form-label">Fim *</label><input class="form-input" id="aula-fim" type="time" value="07:00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Professor</label><select class="form-input" id="aula-prof"><option value="">Selecionar</option></select></div>
+      <div class="form-group"><label class="form-label">Vagas</label><input class="form-input" id="aula-vagas" type="number" placeholder="15" min="1"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Observação</label><input class="form-input" id="aula-obs" placeholder="Ex: Trazer toalha e squeeze"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fecharModal('modal-aula')">Cancelar</button>
+      <button class="btn btn-verde" onclick="salvarAula()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STORAGE =====
+const DB = {
+  get: k => JSON.parse(localStorage.getItem('ec_'+k)||'[]'),
+  set: (k,v) => localStorage.setItem('ec_'+k, JSON.stringify(v)),
+};
+
+// ===== UTILS =====
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function hoje() { return new Date().toISOString().slice(0,10); }
+function fmtData(d) { if(!d) return '—'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
+function fmtR(v) { return 'R$ '+Number(v).toLocaleString('pt-BR'); }
+function ini(n) { return n?n.trim()[0].toUpperCase():'?'; }
+function set(id,v) { const e=document.getElementById(id); if(e) e.textContent=v; }
+
+function statusAluno(venc) {
+  if(!venc) return 'Em dia';
+  const diff = Math.floor((new Date(venc+'T00:00:00') - new Date(hoje()+'T00:00:00'))/86400000);
+  if(diff<0) return 'Em atraso';
+  if(diff===0) return 'Vence hoje';
+  return 'Em dia';
+}
+function badgeStatus(s) {
+  if(s==='Em atraso') return `<span class="badge badge-vermelho">Em atraso</span>`;
+  if(s==='Vence hoje') return `<span class="badge badge-amarelo">Vence hoje</span>`;
+  return `<span class="badge badge-verde">Em dia</span>`;
+}
+function toast(msg, cor='var(--verde)') {
+  const t=document.getElementById('toast');
+  t.style.background=cor; t.style.color=cor==='var(--verde)'?'#111':'#fff';
+  t.textContent=msg; t.classList.add('visivel');
+  setTimeout(()=>t.classList.remove('visivel'),2500);
+}
+
+// ===== NAVEGAÇÃO =====
+function mostrar(pagina, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('ativa'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('ativo'));
+  document.getElementById('page-'+pagina).classList.add('ativa');
+  el.classList.add('ativo');
+  if(pagina==='dashboard') renderDashboard();
+  if(pagina==='alunos') renderAlunos();
+  if(pagina==='financeiro') renderFinanceiro();
+  if(pagina==='professores') renderProfessores();
+  if(pagina==='agenda') renderAgenda();
+}
+
+// ===== MODAIS =====
+function abrirModal(id) {
+  if(id==='modal-aluno') {
+    document.getElementById('modal-aluno-titulo').textContent='Novo Aluno';
+    document.getElementById('aluno-edit-id').value='';
+    ['aluno-nome','aluno-telefone','aluno-cpf','aluno-email','aluno-valor'].forEach(f=>document.getElementById(f).value='');
+    document.getElementById('aluno-plano').value='Mensal';
+    document.getElementById('aluno-inicio').value=hoje();
+    document.getElementById('aluno-vencimento').value='';
+  }
+  if(id==='modal-professor') {
+    document.getElementById('modal-prof-titulo').textContent='Novo Professor';
+    document.getElementById('prof-edit-id').value='';
+    ['prof-nome','prof-telefone','prof-cargo','prof-aulas','prof-aval'].forEach(f=>document.getElementById(f).value='');
+    document.getElementById('prof-status').value='Ativo';
+  }
+  if(id==='modal-pagamento') {
+    const sel=document.getElementById('pag-aluno-id');
+    sel.innerHTML='';
+    DB.get('alunos').forEach(a=>{ const o=document.createElement('option'); o.value=a.id; o.textContent=a.nome; sel.appendChild(o); });
+    document.getElementById('pag-data').value=hoje();
+    document.getElementById('pag-valor').value='';
+    document.getElementById('pag-venc').value='';
+    document.getElementById('pag-obs').value='';
+  }
+  if(id==='modal-aula') {
+    document.getElementById('modal-aula-titulo').textContent='Nova Aula';
+    document.getElementById('aula-edit-id').value='';
+    ['aula-nome','aula-obs','aula-vagas'].forEach(f=>document.getElementById(f).value='');
+    document.getElementById('aula-inicio').value='06:00';
+    document.getElementById('aula-fim').value='07:00';
+    document.getElementById('aula-dia').value='Segunda';
+    const sel=document.getElementById('aula-prof');
+    sel.innerHTML='<option value="">Selecionar</option>';
+    DB.get('professores').forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.nome; sel.appendChild(o); });
+  }
+  document.getElementById(id).classList.add('aberto');
+}
+function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) fecharModal(m.id); }));
+
+// ===== ALUNOS =====
+function salvarAluno() {
+  const nome=document.getElementById('aluno-nome').value.trim();
+  const venc=document.getElementById('aluno-vencimento').value;
+  if(!nome||!venc) { toast('Preencha nome e vencimento','var(--vermelho)'); return; }
+  const editId=document.getElementById('aluno-edit-id').value;
+  const alunos=DB.get('alunos');
+  const aluno={ id:editId||uid(), nome, telefone:document.getElementById('aluno-telefone').value, cpf:document.getElementById('aluno-cpf').value, email:document.getElementById('aluno-email').value, plano:document.getElementById('aluno-plano').value, valor:parseFloat(document.getElementById('aluno-valor').value)||0, inicio:document.getElementById('aluno-inicio').value, vencimento:venc };
+  if(editId) { const i=alunos.findIndex(a=>a.id===editId); alunos[i]=aluno; } else alunos.push(aluno);
+  DB.set('alunos',alunos);
+  fecharModal('modal-aluno');
+  toast(editId?'✅ Aluno atualizado!':'✅ Aluno cadastrado!');
+  renderAlunos(); renderDashboard();
+}
+function editarAluno(aId) {
+  const a=DB.get('alunos').find(x=>x.id===aId); if(!a) return;
+  document.getElementById('modal-aluno-titulo').textContent='Editar Aluno';
+  document.getElementById('aluno-edit-id').value=a.id;
+  document.getElementById('aluno-nome').value=a.nome;
+  document.getElementById('aluno-telefone').value=a.telefone||'';
+  document.getElementById('aluno-cpf').value=a.cpf||'';
+  document.getElementById('aluno-email').value=a.email||'';
+  document.getElementById('aluno-plano').value=a.plano;
+  document.getElementById('aluno-valor').value=a.valor;
+  document.getElementById('aluno-inicio').value=a.inicio;
+  document.getElementById('aluno-vencimento').value=a.vencimento;
+  document.getElementById('modal-aluno').classList.add('aberto');
+}
+function excluirAluno(aId) {
+  if(!confirm('Excluir este aluno?')) return;
+  DB.set('alunos',DB.get('alunos').filter(a=>a.id!==aId));
+  toast('Aluno removido','var(--vermelho)'); renderAlunos(); renderDashboard();
+}
+function renderAlunos() {
+  const busca=(document.getElementById('busca-aluno')||{}).value||'';
+  const fp=(document.getElementById('filtro-plano')||{}).value||'';
+  const fs=(document.getElementById('filtro-status')||{}).value||'';
+  let al=DB.get('alunos');
+  if(busca) al=al.filter(a=>a.nome.toLowerCase().includes(busca.toLowerCase())||((a.cpf||'').includes(busca)));
+  if(fp) al=al.filter(a=>a.plano===fp);
+  if(fs) al=al.filter(a=>statusAluno(a.vencimento)===fs);
+  const total=DB.get('alunos').length;
+  set('alunos-sub',`${total} aluno${total!==1?'s':''} cadastrado${total!==1?'s':''}`);
+  const tbody=document.getElementById('tabela-alunos'); if(!tbody) return;
+  tbody.innerHTML=al.length ? al.map(a=>{ const s=statusAluno(a.vencimento); return `<tr><td><span class="avatar">${ini(a.nome)}</span>${a.nome}</td><td>${a.plano}</td><td>${fmtR(a.valor)}</td><td>${fmtData(a.vencimento)}</td><td>${badgeStatus(s)}</td><td><button class="acao-btn" onclick="editarAluno('${a.id}')">Editar</button><button class="acao-btn danger" onclick="excluirAluno('${a.id}')">Excluir</button></td></tr>`; }).join('') : '<tr class="empty-row"><td colspan="6">Nenhum aluno encontrado</td></tr>';
+}
+
+// ===== PAGAMENTOS =====
+function salvarPagamento() {
+  const alunoId=document.getElementById('pag-aluno-id').value;
+  const valor=parseFloat(document.getElementById('pag-valor').value);
+  const data=document.getElementById('pag-data').value;
+  const venc=document.getElementById('pag-venc').value;
+  if(!alunoId||!valor||!data||!venc) { toast('Preencha todos os campos','var(--vermelho)'); return; }
+  const pags=DB.get('pagamentos');
+  const aluno=DB.get('alunos').find(a=>a.id===alunoId);
+  pags.push({ id:uid(), alunoId, nomeAluno:aluno?.nome||'', valor, data, obs:document.getElementById('pag-obs').value });
+  DB.set('pagamentos',pags);
+  const alunos=DB.get('alunos'); const idx=alunos.findIndex(a=>a.id===alunoId);
+  if(idx>=0) { alunos[idx].vencimento=venc; DB.set('alunos',alunos); }
+  fecharModal('modal-pagamento'); toast('✅ Pagamento registrado!');
+  renderFinanceiro(); renderDashboard(); renderAlunos();
+}
+function pagarRapido(alunoId) {
+  const a=DB.get('alunos').find(x=>x.id===alunoId); if(!a) return;
+  const sel=document.getElementById('pag-aluno-id');
+  sel.innerHTML=''; DB.get('alunos').forEach(al=>{ const o=document.createElement('option'); o.value=al.id; o.textContent=al.nome; sel.appendChild(o); });
+  sel.value=alunoId;
+  document.getElementById('pag-valor').value=a.valor;
+  document.getElementById('pag-data').value=hoje();
+  const v=new Date(a.vencimento+'T00:00:00'); v.setDate(v.getDate()+30);
+  document.getElementById('pag-venc').value=v.toISOString().slice(0,10);
+  document.getElementById('pag-obs').value='';
+  document.getElementById('modal-pagamento').classList.add('aberto');
+}
+function renderFinanceiro() {
+  const mes=hoje().slice(0,7);
+  const mesNome=new Date(mes+'-01').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  set('fin-mes',mesNome.charAt(0).toUpperCase()+mesNome.slice(1));
+  const pags=DB.get('pagamentos').filter(p=>p.data.slice(0,7)===mes);
+  const receita=pags.reduce((s,p)=>s+p.valor,0);
+  const alunos=DB.get('alunos');
+  const atrasados=alunos.filter(a=>statusAluno(a.vencimento)==='Em atraso');
+  const venceHoje=alunos.filter(a=>statusAluno(a.vencimento)==='Vence hoje');
+  const pendentes=[...atrasados,...venceHoje];
+  const aReceber=pendentes.reduce((s,a)=>s+a.valor,0);
+  const atrasoVal=atrasados.reduce((s,a)=>s+a.valor,0);
+  const meta=10000; const pct=Math.min(Math.round(receita/meta*100),100);
+  const ticket=alunos.length?Math.round(alunos.reduce((s,a)=>s+a.valor,0)/alunos.length):0;
+  set('fin-receita',fmtR(receita)); set('fin-areceber',fmtR(aReceber)); set('fin-atraso',fmtR(atrasoVal)); set('fin-ticket',fmtR(ticket));
+  set('fin-meta-pct',`${pct}% da meta (R$ 10.000)`); set('fin-pendentes',`${pendentes.length} pendente${pendentes.length!==1?'s':''}`); set('fin-inadimplentes',`${atrasados.length} inadimplente${atrasados.length!==1?'s':''}`);
+  const barra=document.getElementById('fin-barra'); if(barra) barra.style.width=pct+'%';
+  const recEl=document.getElementById('fin-recebidos');
+  if(recEl) recEl.innerHTML=pags.length ? pags.slice().reverse().slice(0,8).map(p=>`<tr><td><span class="avatar">${ini(p.nomeAluno)}</span>${p.nomeAluno}</td><td>${fmtR(p.valor)}</td><td>${fmtData(p.data)}</td></tr>`).join('') : '<tr class="empty-row"><td colspan="3">Nenhum pagamento este mês</td></tr>';
+  const atrEl=document.getElementById('fin-atraso-lista');
+  if(atrEl) atrEl.innerHTML=pendentes.length ? pendentes.map(a=>{ const s=statusAluno(a.vencimento); return `<tr><td><span class="avatar">${ini(a.nome)}</span>${a.nome}</td><td>${fmtR(a.valor)}</td><td>${fmtData(a.vencimento)}</td><td><button class="acao-btn" style="${s==='Vence hoje'?'color:var(--amarelo);border-color:var(--amarelo)':''}" onclick="pagarRapido('${a.id}')">${s==='Vence hoje'?'Hoje':'Cobrar'}</button></td></tr>`; }).join('') : '<tr class="empty-row"><td colspan="4">Nenhum pendente 🎉</td></tr>';
+}
+
+// ===== PROFESSORES =====
+function salvarProfessor() {
+  const nome=document.getElementById('prof-nome').value.trim();
+  const cargo=document.getElementById('prof-cargo').value.trim();
+  if(!nome||!cargo) { toast('Preencha nome e cargo','var(--vermelho)'); return; }
+  const editId=document.getElementById('prof-edit-id').value;
+  const profs=DB.get('professores');
+  const prof={ id:editId||uid(), nome, cargo, telefone:document.getElementById('prof-telefone').value, status:document.getElementById('prof-status').value, aulas:parseInt(document.getElementById('prof-aulas').value)||0, avaliacao:parseFloat(document.getElementById('prof-aval').value)||5.0 };
+  if(editId) { const i=profs.findIndex(p=>p.id===editId); profs[i]=prof; } else profs.push(prof);
+  DB.set('professores',profs); fecharModal('modal-professor'); toast(editId?'✅ Professor atualizado!':'✅ Professor cadastrado!');
+  renderProfessores(); renderDashboard();
+}
+function editarProfessor(pId) {
+  const p=DB.get('professores').find(x=>x.id===pId); if(!p) return;
+  document.getElementById('modal-prof-titulo').textContent='Editar Professor';
+  document.getElementById('prof-edit-id').value=p.id; document.getElementById('prof-nome').value=p.nome;
+  document.getElementById('prof-cargo').value=p.cargo; document.getElementById('prof-telefone').value=p.telefone||'';
+  document.getElementById('prof-status').value=p.status; document.getElementById('prof-aulas').value=p.aulas;
+  document.getElementById('prof-aval').value=p.avaliacao;
+  document.getElementById('modal-professor').classList.add('aberto');
+}
+function excluirProfessor(pId) {
+  if(!confirm('Excluir este professor?')) return;
+  DB.set('professores',DB.get('professores').filter(p=>p.id!==pId));
+  toast('Professor removido','var(--vermelho)'); renderProfessores(); renderDashboard();
+}
+function renderProfessores() {
+  const profs=DB.get('professores');
+  set('prof-sub',`${profs.length} professor${profs.length!==1?'es':''} cadastrado${profs.length!==1?'s':''}`);
+  const grid=document.getElementById('grid-professores'); if(!grid) return;
+  grid.innerHTML=profs.length ? profs.map(p=>{ const bg=p.status==='Ativo'?'var(--verde)':'var(--cinza-claro)'; const cor=p.status==='Ativo'?'#111':'#fff'; const badge=p.status==='Ativo'?'badge-verde':p.status==='Férias'?'badge-amarelo':'badge-cinza'; return `<div class="prof-card"><div class="prof-avatar" style="background:${bg};color:${cor}">${ini(p.nome)}</div><div class="prof-nome">${p.nome}</div><div class="prof-cargo">${p.cargo}</div><span class="badge ${badge}">${p.status}</span><div class="prof-stats"><div><div class="prof-stat-val">${p.aulas}</div><div class="prof-stat-label">Aulas/sem</div></div><div><div class="prof-stat-val">${p.avaliacao}⭐</div><div class="prof-stat-label">Avaliação</div></div></div><div class="prof-acoes"><button class="acao-btn" onclick="editarProfessor('${p.id}')">Editar</button><button class="acao-btn danger" onclick="excluirProfessor('${p.id}')">Excluir</button></div></div>`; }).join('') : '<div style="color:var(--cinza-texto);padding:32px;grid-column:1/-1;text-align:center">Nenhum professor cadastrado</div>';
+}
+
+// ===== AGENDA =====
+function salvarAula() {
+  const nome=document.getElementById('aula-nome').value.trim();
+  const ini2=document.getElementById('aula-inicio').value;
+  const fim=document.getElementById('aula-fim').value;
+  if(!nome||!ini2||!fim) { toast('Preencha nome e horários','var(--vermelho)'); return; }
+  const editId=document.getElementById('aula-edit-id').value;
+  const aulas=DB.get('aulas');
+  const profId=document.getElementById('aula-prof').value;
+  const profNome=profId?(DB.get('professores').find(p=>p.id===profId)||{}).nome||'':'';
+  const aula={ id:editId||uid(), nome, dia:document.getElementById('aula-dia').value, inicio:ini2, fim, profId, profNome, vagas:parseInt(document.getElementById('aula-vagas').value)||15, obs:document.getElementById('aula-obs').value };
+  if(editId) { const i=aulas.findIndex(a=>a.id===editId); aulas[i]=aula; } else aulas.push(aula);
+  DB.set('aulas',aulas); fecharModal('modal-aula'); toast(editId?'✅ Aula atualizada!':'✅ Aula criada!'); renderAgenda();
+}
+function editarAula(aulaId) {
+  const a=DB.get('aulas').find(x=>x.id===aulaId); if(!a) return;
+  const sel=document.getElementById('aula-prof');
+  sel.innerHTML='<option value="">Selecionar</option>';
+  DB.get('professores').forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.nome; sel.appendChild(o); });
+  document.getElementById('modal-aula-titulo').textContent='Editar Aula';
+  document.getElementById('aula-edit-id').value=a.id; document.getElementById('aula-nome').value=a.nome;
+  document.getElementById('aula-dia').value=a.dia; document.getElementById('aula-inicio').value=a.inicio;
+  document.getElementById('aula-fim').value=a.fim; document.getElementById('aula-prof').value=a.profId||'';
+  document.getElementById('aula-vagas').value=a.vagas; document.getElementById('aula-obs').value=a.obs||'';
+  document.getElementById('modal-aula').classList.add('aberto');
+}
+function excluirAula(aulaId) {
+  if(!confirm('Excluir esta aula?')) return;
+  DB.set('aulas',DB.get('aulas').filter(a=>a.id!==aulaId));
+  toast('Aula removida','var(--vermelho)'); renderAgenda();
+}
+function renderAgenda() {
+  const filtro=(document.getElementById('filtro-dia')||{}).value||'';
+  const dias=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+  const aulas=DB.get('aulas');
+  set('agenda-sub',`${aulas.length} aula${aulas.length!==1?'s':''} cadastrada${aulas.length!==1?'s':''}`);
+  const grid=document.getElementById('grid-agenda'); if(!grid) return;
+  if(!aulas.length) { grid.innerHTML='<div style="color:var(--cinza-texto);padding:32px;text-align:center">Nenhuma aula cadastrada ainda</div>'; return; }
+  const diasFiltrados=filtro?[filtro]:dias;
+  let html='';
+  diasFiltrados.forEach(dia=>{ const ad=aulas.filter(a=>a.dia===dia).sort((a,b)=>a.inicio.localeCompare(b.inicio)); if(!ad.length) return; html+=`<div style="margin-bottom:8px;font-size:12px;font-weight:700;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:1px">${dia}</div><div class="card" style="margin-bottom:20px"><table><thead><tr><th>Aula</th><th>Horário</th><th>Professor</th><th>Vagas</th><th>Ações</th></tr></thead><tbody>`; ad.forEach(a=>{ html+=`<tr><td><strong>${a.nome}</strong>${a.obs?`<br><span style="font-size:11px;color:var(--cinza-texto)">${a.obs}</span>`:''}</td><td>${a.inicio} – ${a.fim}</td><td>${a.profNome||'<span style="color:var(--cinza-texto)">—</span>'}</td><td>${a.vagas} vagas</td><td><button class="acao-btn" onclick="editarAula('${a.id}')">Editar</button><button class="acao-btn danger" onclick="excluirAula('${a.id}')">Excluir</button></td></tr>`; }); html+='</tbody></table></div>'; });
+  grid.innerHTML=html||'<div style="color:var(--cinza-texto);padding:32px;text-align:center">Nenhuma aula neste dia</div>';
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const h=new Date().getHours();
+  const s=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+  const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const agora=new Date();
+  set('dash-saudacao',`${s}, Mari 👋`);
+  set('dash-data',`${dias[agora.getDay()]}, ${agora.getDate()} de ${meses[agora.getMonth()]} de ${agora.getFullYear()}`);
+  const alunos=DB.get('alunos'); const profs=DB.get('professores');
+  const mes=hoje().slice(0,7);
+  const pags=DB.get('pagamentos').filter(p=>p.data.slice(0,7)===mes);
+  const receita=pags.reduce((s,p)=>s+p.valor,0);
+  const atrasados=alunos.filter(a=>statusAluno(a.vencimento)==='Em atraso');
+  const venceHj=alunos.filter(a=>statusAluno(a.vencimento)==='Vence hoje');
+  const meta=10000; const pct=Math.min(Math.round(receita/meta*100),100);
+  set('dash-ativos',alunos.length); set('dash-receita',fmtR(receita));
+  set('dash-vencendo',venceHj.length); set('dash-profs',profs.filter(p=>p.status==='Ativo').length);
+  set('dash-atraso-txt',`${atrasados.length} em atraso`); set('dash-meta-pct',`${pct}% da meta`);
+  const barra=document.getElementById('dash-barra'); if(barra) barra.style.width=pct+'%';
+  // avisos
+  const av=document.getElementById('dash-avisos');
+  if(av) { const items=[]; if(atrasados.length) items.push(`<div class="notif"><div class="notif-dot vermelho"></div><div><div class="notif-texto">${atrasados.length} aluno${atrasados.length>1?'s':''} com pagamento em atraso</div><div class="notif-tempo">Ação necessária</div></div></div>`); if(venceHj.length) items.push(`<div class="notif"><div class="notif-dot amarelo"></div><div><div class="notif-texto">${venceHj.length} aluno${venceHj.length>1?'s':''} vence${venceHj.length>1?'m':''} hoje</div><div class="notif-tempo">${fmtData(hoje())}</div></div></div>`); if(!items.length) items.push(`<div class="notif"><div class="notif-dot"></div><div><div class="notif-texto">Tudo em dia! 🎉</div><div class="notif-tempo">Sem pendências</div></div></div>`); av.innerHTML=items.join(''); }
+  // últimos alunos
+  const ul=document.getElementById('dash-ultimos');
+  if(ul) { const rec=alunos.slice(-5).reverse(); ul.innerHTML=rec.length?rec.map(a=>`<tr><td><span class="avatar">${ini(a.nome)}</span>${a.nome}</td><td>${a.plano}</td><td>${badgeStatus(statusAluno(a.vencimento))}</td></tr>`).join(''):'<tr class="empty-row"><td colspan="3">Nenhum aluno cadastrado</td></tr>'; }
+  // chart
+  const chart=document.getElementById('dash-chart');
+  if(chart) { const nomMeses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; const mAtual=agora.getMonth(); const ultimos6=[]; for(let i=5;i>=0;i--) { const m=(mAtual-i+12)%12; const y=agora.getFullYear()-(mAtual-i<0?1:0); const key=`${y}-${String(m+1).padStart(2,'0')}`; const total=DB.get('pagamentos').filter(p=>p.data.slice(0,7)===key).reduce((s,p)=>s+p.valor,0); ultimos6.push({mes:nomMeses[m],total}); } const max=Math.max(...ultimos6.map(x=>x.total),1); chart.innerHTML=ultimos6.map((x,i)=>{ const h=Math.max(Math.round((x.total/max)*100),4); const ult=i===5; return `<div class="bar-wrap"><div class="bar" style="height:${h}px;${ult?'background:var(--verde)':''}" title="${fmtR(x.total)}"></div><div class="bar-label" style="${ult?'color:var(--verde)':''}">${x.mes}</div></div>`; }).join(''); }
+}
+
+// ===== MÁSCARAS =====
+function mascaraTel(e) { let v=e.target.value.replace(/\D/g,'').slice(0,11); v=v.length<=10?v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3'):v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3'); e.target.value=v.replace(/-$/,''); }
+function mascaraCPF(e) { let v=e.target.value.replace(/\D/g,'').slice(0,11); v=v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4'); e.target.value=v.replace(/[.-]$/,''); }
+['aluno-telefone','prof-telefone'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('input',mascaraTel); });
+['aluno-cpf'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('input',mascaraCPF); });
+
+// ===== INIT =====
+renderDashboard();
+</script>
+</body>
+</html>
